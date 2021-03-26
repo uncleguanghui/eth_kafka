@@ -1,0 +1,91 @@
+*.py[cod]
+
+# C extensions
+*.so
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+.eggs
+parts
+bin
+var
+sdist
+develop-eggs
+.installed.cfg
+lib
+lib64
+venv*
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.tox
+nosetests.xml
+
+# Translations
+*.mo
+
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
+
+# Complexity
+output/
+
+# Hypothese Property base testing
+.hypothesis
+
+# tox/pytest cache
+.cache
+.pytest_cache
+
+### JetBrains template
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and Webstorm
+# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
+
+# User-specific stuff:
+.idea/
+
+# Mongo Explorer plugin:
+.idea/mongoSettings.xml
+
+# VIM temp files
+*.swp
+
+## File-based project format:
+*.iws
+
+## Plugin-specific files:
+
+# IntelliJ
+/out/
+
+# mpeltonen/sbt-idea plugin
+.idea_modules/
+
+# VS Code
+.vscode/
+
+# DS Store files
+*.DS_Store
+
+# mypy Cache
+.mypy_cache/
+
+# pip wheel metadata
+pip-wheel-metadata/
+
+# jupyter notebook files
+*.ipynb
+
+config.ini
+
+pid.txt
+kill.sh
