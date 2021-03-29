@@ -4,56 +4,78 @@
 @Author  : zhangguanghui
 """
 import json
-from json import dumps
-from common import config
+import logging
+import collections
 from kafka import KafkaProducer, KafkaConsumer
-from kafka.structs import TopicPartition
 from web3.exceptions import BadFunctionCallOutput
 
+logging.getLogger("kafka").setLevel(logging.CRITICAL)  # 隐藏 kafka 日志消息
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(filename)s[line:%(lineno)d] : %(message)s')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+
+# ###################################### 特殊 ######################################
+class Cache:
+    def __init__(self, maxlen=3):
+        self.data = collections.OrderedDict()  # 缓存已经获取过的区块哈希值（因为有的时候会得到重复值）
+        self.maxlen = maxlen
+
+    def __setitem__(self, key, value):
+        # 模拟字典设置值的方法
+        self.data[key] = value
+        # 控制字典长度
+        if len(self.data) > self.maxlen:
+            self.pop()
+
+    def pop(self):
+        # 只有缓存的数据量达到要求时，才会返回最老的那条数据
+        if len(self.data) >= self.maxlen:
+            return self.data.popitem(last=False)[1]
+
+    def __repr__(self):
+        return str(self.data)
+
+    def __len__(self):
+        return len(self.data)
+
+
+# ###################################### kafka ######################################
 # 初始化 kafka 生产者
-kafka_producer = KafkaProducer(
-    bootstrap_servers=config.get('kafka', 'bootstrap_servers').split(','),
-    value_serializer=lambda x: dumps(x).encode('utf-8')
-)
+def kafka_producer(bootstrap_servers):
+    producer = KafkaProducer(
+        bootstrap_servers=bootstrap_servers,
+        api_version=(0, 10, 2, 0),
+        value_serializer=lambda x: json.dumps(x).encode('utf-8')
+    )
+    logger.debug(f'kafka 生产者初始化成功: {bootstrap_servers}')
+    return producer
 
 
-def kafka_consumer(topic, group_id, auto_offset_reset='latest', **kwargs):
+def kafka_consumer(*topics, group_id=None, bootstrap_servers='', auto_offset_reset='latest', **kwargs):
     """
-    返回消费者
-    :param topic:
+    返回 kafka 消费者
+    :param topics:
     :param group_id:
+    :param bootstrap_servers:
     :param auto_offset_reset:
     :return:
     """
-    # 返回消费者
-    return KafkaConsumer(
-        topic,
+    consumer = KafkaConsumer(
+        *topics,
         group_id=group_id,  # 指定此消费者实例属于的组名，可以不指定
-        bootstrap_servers=config.get('kafka', 'bootstrap_servers').split(','),  # 指定 kafka 服务器
+        bootstrap_servers=bootstrap_servers,  # 指定 kafka 服务器
         auto_offset_reset=auto_offset_reset,  # 'smallest': 'earliest', 'largest': 'latest'
+        value_deserializer=lambda x: json.loads(x.decode('utf-8').encode('utf-8').decode('unicode_escape')),
         **kwargs
     )
+    logger.debug(f'kafka 消费者初始化成功: {bootstrap_servers}, topics: {topics}, group: {group_id}, '
+                 f'auto_offset_reset: {auto_offset_reset}, 其他参数：{kwargs}')
+    return consumer
 
 
-def topic_has_data(consumer, topic) -> bool:
-    partitions = [TopicPartition(topic, p) for p in consumer.partitions_for_topic(topic)]
-    last_offset_per_partition = consumer.end_offsets(partitions)
-    return any(last_offset_per_partition.values())
-
-
-def get_latest_data(consumer, topic):
-    if topic_has_data(consumer, topic):
-        for msg in consumer:
-            msg_new = msg.value.decode('utf-8').encode('utf-8').decode('unicode_escape')
-            return msg_new
-
-
-def to_kafka(obj):
-    if not obj.topic or not obj.data:
-        return
-    data = obj.parse()
-    kafka_producer.send(obj.topic, value=data)
-
+# ###################################### 数据处理 ######################################
 
 def to_normalized_address(address):
     if address is None or not isinstance(address, str):
@@ -86,8 +108,8 @@ def call_contract_function2(func, ignore_errors, default_value=None):
         return result
     except Exception as ex:
         if type(ex) in ignore_errors:
-            print('An exception occurred in function {} of contract {}. '.format(func.fn_name, func.address)
-                  + 'This exception can be safely ignored.')
+            logging.error(f'An exception occurred in function {func.fn_name} of contract {func.address}. '
+                          f'This exception can be safely ignored.')
         return default_value
 
 

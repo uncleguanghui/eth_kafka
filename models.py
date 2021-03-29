@@ -3,23 +3,55 @@
 @Time    : 2021/3/26 3:09 下午
 @Author  : zhangguanghui
 """
-from common import config
+import logging
+from common import config, producer
 from utils import to_normalized_address, get_first_result
+
+logging.getLogger("kafka").setLevel(logging.CRITICAL)  # 隐藏 kafka 日志消息
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(filename)s[line:%(lineno)d] : %(message)s')
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class Base:
-    topic = ''
+    key = ''
 
     def __init__(self, data):
-        self.topic = config.get('kafka', self.topic)
+        self.topic = config.get('kafka', self.key, fallback=None)
         self.data = data
 
     def parse(self) -> dict:
         pass
 
+    def __repr__(self):
+        return self.__class__.__name__
+
+    def save(self):
+        if not self.topic:
+            logger.debug(f'没有找到 {self.__class__.__name__} 的主题，不写入 kafka')
+            return
+        elif not self.data:
+            logger.debug(f'没有找到 {self.__class__.__name__} 的数据，不写入 kafka')
+            return
+        data = self.parse()
+        future = producer.send(self.topic, value=data)
+        future.add_callback(self.callback_success)
+        future.add_errback(self.callback_error)
+
+    def callback_success(self):
+        logger.debug(f'{self} 发送成功')
+
+    def callback_error(self):
+        logger.error(f'{self} 发送失败')
+
 
 class Block(Base):
     key = 'block_topic'
+
+    def __repr__(self):
+        # Block:(233)aaa
+        return f'{self.__class__.__name__}:({self.data.get("number")})' \
+               f'{self.data.get("hash").hex()}'
 
     def parse(self):
         return {
@@ -47,6 +79,11 @@ class Block(Base):
 class Transaction(Base):
     key = 'transaction_topic'
 
+    def __repr__(self):
+        # Transaction:(233)aaa
+        return f'{self.__class__.__name__}:({self.data.get("blockNumber")})' \
+               f'{self.data.get("hash").hex()}'
+
     def parse(self):
         return {
             'hash': self.data.get('hash').hex(),
@@ -66,6 +103,11 @@ class Transaction(Base):
 class Log(Base):
     key = 'log_topic'
 
+    def __repr__(self):
+        # Log:(233)aaa
+        return f'{self.__class__.__name__}:({self.data[0].get("blockNumber")})' \
+               f'{self.data[0].get("transactionHash").hex()}'
+
     def parse(self):
         # 日志的 data 类型是 list，表示一个交易的所有日志
         return [{
@@ -82,6 +124,11 @@ class Log(Base):
 
 class Receipt(Base):
     key = 'receipt_topic'
+
+    def __repr__(self):
+        # Receipt:(233)aaa
+        return f'{self.__class__.__name__}:({self.data.get("blockNumber")})' \
+               f'{self.data.get("transactionHash").hex()}'
 
     def parse(self):
         return {
@@ -104,6 +151,11 @@ class Contract(Base):
         super().__init__(*args, **kwargs)
         self.block_number = block_number
 
+    def __repr__(self):
+        # Contract:(233)aaa
+        return f'{self.__class__.__name__}:({self.block_number})' \
+               f'{to_normalized_address(self.data.get("contractAddress"))}'
+
     def parse(self):
         return {
             'address': to_normalized_address(self.data.get('contractAddress')),
@@ -118,6 +170,11 @@ class Token(Base):
         super().__init__(*args, **kwargs)
         self.block_number = block_number
         self.contract = contract
+
+    def __repr__(self):
+        # Contract:(233)aaa
+        return f'{self.__class__.__name__}:({self.block_number})' \
+               f'{to_normalized_address(self.data)}'
 
     def parse(self):
         return {

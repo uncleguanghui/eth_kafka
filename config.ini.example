@@ -1,0 +1,22 @@
+[eth]
+# 全节点
+ipc = /xxx/geth.ipc
+ws = ws://xxx.xxx.xxx.xxx:8546
+http = http://xxx.xxx.xxx.xxx:8545
+# 开始区块高度，可以是具体数值，也可以是 latest
+start = latest
+
+[kafka]
+# 最多会输出到 6 个 topic 里，如果不要某个 topic，则直接在前面加井号 # 来注释掉
+block_topic = bsc_block
+transaction_topic = bsc_transaction
+log_topic = bsc_log
+receipt_topic = bsc_receipt
+token_topic = bsc_token
+contract_topic = bsc_contract
+# 多个 server 之间用逗号隔开
+bootstrap_servers = xxx.xxx.xxx.xxx:9092
+
+[log]
+# 日志等级，CRITICAL > FATAL > ERROR > WARN >= WARNING > INFO > DEBUG > NOTSET
+log_level = INFO

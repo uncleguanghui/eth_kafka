@@ -89,3 +89,5 @@ config.ini
 
 pid.txt
 kill.sh
+
+logs/
