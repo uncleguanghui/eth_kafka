@@ -22,7 +22,7 @@ w3 = get_web3()
 
 # 区块缓存：遇到了相近的问题
 # https://ethereum.stackexchange.com/questions/87227/duplicate-events-from-get-new-entries-using-web3-py
-block_cache = Cache(maxlen=3)
+block_cache = Cache(maxlen=5)
 
 
 def send_block(height_or_hash):
@@ -35,6 +35,8 @@ def send_block(height_or_hash):
     block1 = w3.eth.getBlock(height_or_hash, True)
     if block1.number in block_cache:
         logger_err.error(f'获得重复区块高度 {block1.number}')
+        block_cache[block1.number] = block1
+        return
     block_cache[block1.number] = block1
 
     # 从缓存列表里获得待处理的区块，如果为 None，则代表缓存的数据量不够，不进行任何处理
