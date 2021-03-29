@@ -3,10 +3,10 @@ pandas>=1.2.0
 eth_utils>=1.10.0
 pyetherchain>=0.3.2
 web3>=5.17.0
-pyspark==2.4.7
+# pyspark==2.4.7
 boto3>=1.17.33
 botocore>=1.20.3
 numpy>=1.20.1
 pyarrow>=3.0.0
-apache-flink>=1.11.2
+# apache-flink>=1.11.2
 kafka-python>=2.0.2

@@ -18,6 +18,16 @@ mv config.ini.example config.ini
 
 在配置文件 config.ini 中可以看到 6 个 Kafka Topic，请创建。
 
+```commandline
+export zookeeper_url=172.31.45.92:2181
+kafka-topic.sh --create --zookeeper $zookeeper_url --topic bsc_block --partitions 1 --replication-factor 1
+kafka-topic.sh --create --zookeeper $zookeeper_url --topic bsc_transaction --partitions 1 --replication-factor 1
+kafka-topic.sh --create --zookeeper $zookeeper_url --topic bsc_log --partitions 1 --replication-factor 1
+kafka-topic.sh --create --zookeeper $zookeeper_url --topic bsc_receipt --partitions 1 --replication-factor 1
+kafka-topic.sh --create --zookeeper $zookeeper_url --topic bsc_token --partitions 1 --replication-factor 1
+kafka-topic.sh --create --zookeeper $zookeeper_url --topic bsc_contract --partitions 1 --replication-factor 1
+```
+
 ### 3、准备 Python3 环境
 
 安装 Python3，然后运行下面的命令安装相关依赖。
