@@ -7,7 +7,7 @@ from models import Token
 from logger import Logger
 from config import config
 from web3.exceptions import InvalidAddress
-from utils import ERC20_ABI, kafka_consumer, get_web3
+from utils import ERC20_ABI, kafka_consumer, get_web3, LFUCache
 
 # 设置日志
 logger = Logger(__name__, filename='token.log')
@@ -18,6 +18,10 @@ logger_err = Logger(f'{__name__}_err', filename='err_token.log')
 
 # web3 连接
 w3 = get_web3()
+
+# 缓存处理过的 token 地址，3W 个
+valid_token_cache = LFUCache(maxlen=10000)
+invalid_token_cache = LFUCache(maxlen=10000)
 
 TOPIC_TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 
@@ -56,11 +60,22 @@ def monitor_token():
 
         # 获取 token
         for address in addresses:
+            # 如果是已经处理过的地址，则直接处理
+            if address in valid_token_cache:
+                valid_token_cache[address].save()
+                continue
+            elif address in invalid_token_cache:
+                invalid_token_cache[address] = 1
+                continue
+
             try:
                 contract = w3.eth.contract(address, abi=ERC20_ABI)
-                Token(data=address, contract=contract, block_number=block_number).save()
+                token = Token(data=address, contract=contract, block_number=block_number)
+                token.save()
+                valid_token_cache[address] = token
             except InvalidAddress:
-                logger_err.error(f'无法处理 token 合约地址 {address}')
+                invalid_token_cache[address] = 1
+                logger_err.debug(f'无法处理 token 合约地址 {address}')
 
 
 if __name__ == '__main__':

@@ -48,6 +48,24 @@ class Cache:
         return key in self.data
 
 
+class LFUCache(Cache):
+    # Least Frequently Used）最近最少使用算法
+    def __setitem__(self, key, value):
+        # 如果 key 出现过，则移到最后面
+        if key in self.data:
+            self.data.move_to_end(key, last=True)
+        # 模拟字典设置值的方法
+        self.data[key] = value
+        # 控制字典长度
+        if len(self.data) > self.maxlen:
+            self.pop()
+
+    def __getitem__(self, key):
+        if key in self.data:
+            self.data.move_to_end(key, last=True)
+            return self.data[key]
+
+
 # ###################################### web3 ######################################
 def get_web3():
     # 初始化 web3，按一定优先级遍历参数
