@@ -11,6 +11,10 @@ from utils import ERC20_ABI, kafka_consumer, get_web3
 
 # 设置日志
 logger = Logger(__name__, filename='token.log')
+# 记录异常
+# 1、topic 没有正常创建
+# 2、无法处理 token 合约地址
+logger_err = Logger(f'{__name__}_err', filename='err_token.log')
 
 # web3 连接
 w3 = get_web3()
@@ -24,10 +28,10 @@ def monitor_token():
     :return:
     """
     if not config.get('kafka', 'log_topic', fallback=None):
-        logger.warning('config.ini 中没有 log_topic 参数，退出 monitor_token 任务')
+        logger_err.error('config.ini 中没有 log_topic 参数，退出 monitor_token 任务')
         return
     elif not config.get('kafka', 'token_topic', fallback=None):
-        logger.warning('config.ini 中没有 token_topic 参数，退出 monitor_token 任务')
+        logger_err.error('config.ini 中没有 token_topic 参数，退出 monitor_token 任务')
         return
     consumer = kafka_consumer(config.get('kafka', 'log_topic'), group_id='monitor_token')
     last_block_height = None
@@ -56,7 +60,7 @@ def monitor_token():
                 contract = w3.eth.contract(address, abi=ERC20_ABI)
                 Token(data=address, contract=contract, block_number=block_number).save()
             except InvalidAddress:
-                logger.error(f'无法处理 token 合约地址 {address}')
+                logger_err.error(f'无法处理 token 合约地址 {address}')
 
 
 if __name__ == '__main__':

@@ -23,6 +23,14 @@ class Cache:
         self.data = collections.OrderedDict()  # 缓存已经获取过的区块哈希值（因为有的时候会得到重复值）
         self.maxlen = maxlen
 
+    def pop(self):
+        # 只有缓存的数据量达到要求时，才会返回最老的那条数据
+        if len(self.data) >= self.maxlen:
+            return self.data.popitem(last=False)[1]
+
+    def __getitem__(self, key):
+        return self.data[key]
+
     def __setitem__(self, key, value):
         # 模拟字典设置值的方法
         self.data[key] = value
@@ -30,16 +38,14 @@ class Cache:
         if len(self.data) > self.maxlen:
             self.pop()
 
-    def pop(self):
-        # 只有缓存的数据量达到要求时，才会返回最老的那条数据
-        if len(self.data) >= self.maxlen:
-            return self.data.popitem(last=False)[1]
-
     def __repr__(self):
         return str(self.data)
 
     def __len__(self):
         return len(self.data)
+
+    def __contains__(self, key):
+        return key in self.data
 
 
 # ###################################### web3 ######################################

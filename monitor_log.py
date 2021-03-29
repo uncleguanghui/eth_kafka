@@ -11,6 +11,9 @@ from utils import kafka_consumer, get_web3
 
 # 设置日志
 logger = Logger(__name__, filename='log.log')
+# 记录异常
+# 1、topic 没有正常创建
+logger_err = Logger(f'{__name__}_err', filename='err_log.log')
 
 # web3 连接
 w3 = get_web3()
@@ -22,10 +25,10 @@ def monitor_logs():
     :return:
     """
     if not config.get('kafka', 'block_topic', fallback=None):
-        logger.warning('config.ini 中没有 block_topic 参数，退出 monitor_logs 任务')
+        logger_err.error('config.ini 中没有 block_topic 参数，退出 monitor_logs 任务')
         return
     elif not config.get('kafka', 'log_topic', fallback=None):
-        logger.warning('config.ini 中没有 log_topic 参数，退出 monitor_logs 任务')
+        logger_err.error('config.ini 中没有 log_topic 参数，退出 monitor_logs 任务')
         return
     consumer = kafka_consumer(config.get('kafka', 'block_topic'), group_id='monitor_logs')
     for msg in consumer:

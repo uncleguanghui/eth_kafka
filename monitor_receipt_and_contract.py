@@ -11,6 +11,10 @@ from web3.exceptions import TransactionNotFound
 
 # 设置日志
 logger = Logger(__name__, filename='receipt_contract.log')
+# 记录异常
+# 1、topic 没有正常创建
+# 2、找不到指定交易
+logger_err = Logger(f'{__name__}_err', filename='err_receipt_contract.log')
 
 # web3 连接
 w3 = get_web3()
@@ -22,11 +26,13 @@ def monitor_receipt_and_contract():
     :return:
     """
     if not config.get('kafka', 'transaction_topic', fallback=None):
-        logger.warning('config.ini 中没有 transaction_topic 参数，退出 monitor_receipt_and_contract 任务')
+        logger_err.error('config.ini 中没有 transaction_topic 参数，退出 monitor_receipt_and_contract 任务')
         return
-    elif not config.get('kafka', 'receipt_topic', fallback=None) or not config.get('kafka', 'contract_topic',
-                                                                                   fallback=None):
-        logger.warning('config.ini 中没有 receipt_topic 或 contract_topic 参数，退出 monitor_receipt_and_contract 任务')
+    elif not config.get('kafka', 'receipt_topic', fallback=None):
+        logger_err.error('config.ini 中没有 receipt_topic 参数，退出 monitor_receipt_and_contract 任务')
+        return
+    elif not config.get('kafka', 'contract_topic', fallback=None):
+        logger_err.error('config.ini 中没有 contract_topic 参数，退出 monitor_receipt_and_contract 任务')
         return
     consumer = kafka_consumer(config.get('kafka', 'transaction_topic'), group_id='monitor_receipt')
     last_block_height = None
@@ -46,7 +52,7 @@ def monitor_receipt_and_contract():
         try:
             receipt = w3.eth.getTransactionReceipt(tx['hash'])
         except TransactionNotFound:
-            logger.error(f'在区块高度 {current_block_height} 中找不到交易 {tx["hash"]}')
+            logger_err.error(f'在区块高度 {current_block_height} 中找不到交易 {tx["hash"]}')
             continue
 
         Receipt(data=receipt).save()

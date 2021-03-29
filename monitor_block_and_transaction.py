@@ -12,6 +12,10 @@ from utils import kafka_consumer, Cache, get_web3
 
 # 设置日志
 logger = Logger(__name__, filename='block_transaction.log')
+# 记录异常
+# 1、topic 没有正常创建
+# 2、重复获得相同高度的区块
+logger_err = Logger(f'{__name__}_err', filename='err_block_transaction.log')
 
 # web3 连接
 w3 = get_web3()
@@ -29,6 +33,8 @@ def send_block(height_or_hash):
     """
     # 获取指定的区块，并加入缓存列表
     block1 = w3.eth.getBlock(height_or_hash, True)
+    if block1.number in block_cache:
+        logger_err.error(f'获得重复区块高度 {block1.number}')
     block_cache[block1.number] = block1
 
     # 从缓存列表里获得待处理的区块，如果为 None，则代表缓存的数据量不够，不进行任何处理
@@ -90,7 +96,7 @@ def monitor_block_and_transaction():
     """
     if not config.get('kafka', 'block_topic', fallback=None) or \
             not config.get('kafka', 'transaction_topic', fallback=None):
-        logger.warning('config.ini 中没有 block_topic 或 transaction_topic 参数，退出 monitor_block_and_transaction 任务')
+        logger_err.error('config.ini 中没有 block_topic 或 transaction_topic 参数，退出 monitor_block_and_transaction 任务')
         return
 
     last_block = get_last_block()  # kafka 的最后一条数据
