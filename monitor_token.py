@@ -31,20 +31,24 @@ def monitor_token():
         return
     consumer = kafka_consumer(config.get('kafka', 'log_topic'), group_id='monitor_token')
     last_block_height = None
+    tx_cnt = 0  # 已处理的交易数
     for msg in consumer:
         logs = msg.value
 
         block_number = logs[0]['block_number']
         if last_block_height != block_number:
-            logger.debug(f'开始处理区块高度 {block_number} 下各交易的 receipt')
+            logger.info(f'区块 {last_block_height} 共处理交易 {tx_cnt} 笔')
+            logger.info(f'开始处理区块高度 {block_number} 下各交易的 receipt')
             last_block_height = block_number
+            tx_cnt = 1
+        else:
+            tx_cnt += 1
 
         # 筛选出 token 地址
         addresses = set()
         for log in logs:
             if log['topics'].startswith(TOPIC_TRANSFER):
                 addresses.add(log['address'])
-        # logger.debug(f'交易 {logs[0]["transaction_hash"]} 中有 {len(addresses)} 个不同的 token 地址')
 
         # 获取 token
         for address in addresses:

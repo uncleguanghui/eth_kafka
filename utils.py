@@ -76,7 +76,7 @@ def kafka_producer():
         api_version=(0, 10, 2, 0),
         value_serializer=lambda x: json.dumps(x).encode('utf-8')
     )
-    logging.debug(f'kafka 生产者初始化成功: {bootstrap_servers}')
+    logging.info(f'kafka 生产者初始化成功: {bootstrap_servers}')
     return producer
 
 
@@ -97,8 +97,8 @@ def kafka_consumer(*topics, group_id=None, auto_offset_reset='latest', **kwargs)
         value_deserializer=lambda x: json.loads(x.decode('utf-8').encode('utf-8').decode('unicode_escape')),
         **kwargs
     )
-    logging.debug(f'kafka 消费者初始化成功: {bootstrap_servers}, topics: {topics}, group: {group_id}, '
-                  f'auto_offset_reset: {auto_offset_reset}, 其他参数：{kwargs}')
+    logging.info(f'kafka 消费者初始化成功: {bootstrap_servers}, topics: {topics}, group: {group_id}, '
+                 f'auto_offset_reset: {auto_offset_reset}, 其他参数：{kwargs}')
     return consumer
 
 

@@ -16,7 +16,8 @@ logger = Logger(__name__, filename='block_transaction.log')
 # web3 连接
 w3 = get_web3()
 
-# 区块缓存：遇到了相近的问题 https://ethereum.stackexchange.com/questions/87227/duplicate-events-from-get-new-entries-using-web3-py
+# 区块缓存：遇到了相近的问题
+# https://ethereum.stackexchange.com/questions/87227/duplicate-events-from-get-new-entries-using-web3-py
 block_cache = Cache(maxlen=3)
 
 
@@ -27,17 +28,19 @@ def send_block(height_or_hash):
     :return:
     """
     # 获取指定的区块，并加入缓存列表
-    block = w3.eth.getBlock(height_or_hash, True)
-    block_cache[block.number] = block
+    block1 = w3.eth.getBlock(height_or_hash, True)
+    block_cache[block1.number] = block1
 
     # 从缓存列表里获得待处理的区块，如果为 None，则代表缓存的数据量不够，不进行任何处理
-    block = block_cache.pop()
-    if block is None:
+    block2 = block_cache.pop()
+    if block2 is None:
+        logger.info(f'获取到高度为 {block1.number} 的区块，加入缓存，当前缓存区块数 {len(block_cache)}')
         return
+    else:
+        logger.info(f'获取到高度为 {block1.number} 的区块，加入缓存，开始处理高度为 {block2.number} 的区块')
 
-    logger.debug(f'获取到高度为 {block.number} 的数据，包含交易 {len(block.transactions)} 条')
-    Block(data=block).save()
-    for tx in block.transactions:
+    Block(data=block2).save()
+    for tx in block2.transactions:
         Transaction(data=tx).save()
 
 
@@ -49,12 +52,10 @@ def catch_up_from_start(start: int):
     """
     if not start:
         return
-    logger.debug(f'开始从区块高度 {start} 追赶')
     current_block_index = w3.eth.blockNumber
-    logger.debug(f'当前最新区块高度 {current_block_index}')
+    logger.info(f'开始从区块高度 {start} 追赶，当前最新区块高度 {current_block_index}')
 
     while current_block_index >= start:
-        logger.debug(f'当前最新区块高度 {current_block_index}，开始处理区块高度 {start}')
         send_block(start)
         start += 1
         current_block_index = w3.eth.blockNumber  # 更新当前区块高度
@@ -96,11 +97,10 @@ def monitor_block_and_transaction():
     if last_block:
         new_start = last_block['number'] + 1  # 已处理的最新区块高度
         catch_up_from_start(new_start)  # 追赶到最新区块高度
-        logger.debug('追赶到最新区块高度')
+        logger.info('追赶到最新区块高度')
 
     # 持续更新
     block_filter = w3.eth.filter('latest')
-    # https://ethereum.stackexchange.com/questions/87227/duplicate-events-from-get-new-entries-using-web3-py
     while True:
         for i in block_filter.get_new_entries():
             send_block(i.hex())

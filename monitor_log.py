@@ -31,12 +31,11 @@ def monitor_logs():
     for msg in consumer:
         block = msg.value
         logs = w3.eth.filter({'fromBlock': block['number'], 'toBlock': block['number']}).get_all_entries()
-        logger.debug(f'区块高度 {block["number"]} 下共获得日志 {len(logs)} 条')
         # 按交易聚合
         group = defaultdict(list)
         for log in logs:
             group[log.transactionHash].append(log)
-        logger.debug(f'区块高度 {block["number"]} 按交易聚合得到日志 {len(group)} 组')
+        logger.info(f'区块高度 {block["number"]} 下共获得日志 {len(logs)} 条，按交易聚合得到日志 {len(group)} 组')
         for g in group.values():
             Log(data=g).save()
 

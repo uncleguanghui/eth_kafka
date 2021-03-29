@@ -30,13 +30,18 @@ def monitor_receipt_and_contract():
         return
     consumer = kafka_consumer(config.get('kafka', 'transaction_topic'), group_id='monitor_receipt')
     last_block_height = None
+    tx_cnt = 0  # 已处理的交易数
     for msg in consumer:
         tx = msg.value
 
         current_block_height = tx["block_number"]
         if last_block_height != current_block_height:
-            logger.debug(f'开始处理区块高度 {current_block_height} 下各交易的 receipt')
+            logger.info(f'区块 {last_block_height} 共处理交易 {tx_cnt} 笔')
+            logger.info(f'开始处理区块高度 {current_block_height} 下各交易的 receipt')
             last_block_height = current_block_height
+            tx_cnt = 1
+        else:
+            tx_cnt += 1
 
         try:
             receipt = w3.eth.getTransactionReceipt(tx['hash'])
