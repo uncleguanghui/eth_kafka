@@ -64,6 +64,7 @@ def get_web3():
     if not w3 or not w3.isConnected():
         raise ValueError('请指定正确的 web3 连接方式')
     w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+    return w3
 
 
 # ###################################### kafka ######################################
