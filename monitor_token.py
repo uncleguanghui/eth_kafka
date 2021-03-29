@@ -3,15 +3,17 @@
 @Time    : 2021/3/28 3:44 下午
 @Author  : zhangguanghui
 """
-import logging
 from models import Token
-from common import w3, config
+from logger import Logger
+from config import config
 from web3.exceptions import InvalidAddress
-from utils import ERC20_ABI, kafka_consumer
+from utils import ERC20_ABI, kafka_consumer, get_web3
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(filename)s[line:%(lineno)d] : %(message)s')
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# 设置日志
+logger = Logger(__name__, filename='token.log')
+
+# web3 连接
+w3 = get_web3()
 
 TOPIC_TRANSFER = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
 
@@ -27,9 +29,7 @@ def monitor_token():
     elif not config.get('kafka', 'token_topic', fallback=None):
         logger.warning('config.ini 中没有 token_topic 参数，退出 monitor_token 任务')
         return
-    topic = config.get('kafka', 'log_topic')
-    consumer = kafka_consumer(topic, group_id='monitor_token',
-                              bootstrap_servers=config.get('kafka', 'bootstrap_servers'))
+    consumer = kafka_consumer(config.get('kafka', 'log_topic'), group_id='monitor_token')
     last_block_height = None
     for msg in consumer:
         logs = msg.value

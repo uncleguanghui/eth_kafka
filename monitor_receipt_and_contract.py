@@ -3,15 +3,17 @@
 @Time    : 2021/3/28 3:43 下午
 @Author  : zhangguanghui
 """
-import logging
-from common import w3, config
-from utils import kafka_consumer
+from logger import Logger
+from config import config
 from models import Receipt, Contract
+from utils import kafka_consumer, get_web3
 from web3.exceptions import TransactionNotFound
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(filename)s[line:%(lineno)d] : %(message)s')
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# 设置日志
+logger = Logger(__name__, filename='receipt_contract.log')
+
+# web3 连接
+w3 = get_web3()
 
 
 def monitor_receipt_and_contract():
@@ -26,9 +28,7 @@ def monitor_receipt_and_contract():
                                                                                    fallback=None):
         logger.warning('config.ini 中没有 receipt_topic 或 contract_topic 参数，退出 monitor_receipt_and_contract 任务')
         return
-    topic = config.get('kafka', 'transaction_topic')
-    consumer = kafka_consumer(topic, group_id='monitor_receipt',
-                              bootstrap_servers=config.get('kafka', 'bootstrap_servers'))
+    consumer = kafka_consumer(config.get('kafka', 'transaction_topic'), group_id='monitor_receipt')
     last_block_height = None
     for msg in consumer:
         tx = msg.value

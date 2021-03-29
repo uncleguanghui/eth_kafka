@@ -4,13 +4,11 @@
 @Author  : zhangguanghui
 """
 import logging
-from common import config, producer
-from utils import to_normalized_address, get_first_result
+from config import config
+from utils import to_normalized_address, get_first_result, kafka_producer
 
-logging.getLogger("kafka").setLevel(logging.CRITICAL)  # 隐藏 kafka 日志消息
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(filename)s[line:%(lineno)d] : %(message)s')
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# 连接 kafka
+producer = kafka_producer()
 
 
 class Base:
@@ -28,10 +26,10 @@ class Base:
 
     def save(self):
         if not self.topic:
-            logger.debug(f'没有找到 {self.__class__.__name__} 的主题，不写入 kafka')
+            logging.debug(f'没有找到 {self.__class__.__name__} 的主题，不写入 kafka')
             return
         elif not self.data:
-            logger.debug(f'没有找到 {self.__class__.__name__} 的数据，不写入 kafka')
+            logging.debug(f'没有找到 {self.__class__.__name__} 的数据，不写入 kafka')
             return
         data = self.parse()
         future = producer.send(self.topic, value=data)
@@ -39,10 +37,10 @@ class Base:
         future.add_errback(self.callback_error)
 
     def callback_success(self):
-        logger.debug(f'{self} 发送成功')
+        logging.debug(f'{self} 发送成功')
 
     def callback_error(self):
-        logger.error(f'{self} 发送失败')
+        logging.error(f'{self} 发送失败')
 
 
 class Block(Base):

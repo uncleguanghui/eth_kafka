@@ -4,18 +4,19 @@
 @Author  : zhangguanghui
 """
 import time
-import logging
-from common import w3, config
+from logger import Logger
+from config import config
 from models import Block, Transaction
-from utils import kafka_consumer, Cache
 from kafka.structs import TopicPartition
+from utils import kafka_consumer, Cache, get_web3
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(filename)s[line:%(lineno)d] : %(message)s')
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# 设置日志
+logger = Logger(__name__, filename='block_transaction.log')
 
-# 遇到了相近的问题 https://ethereum.stackexchange.com/questions/87227/duplicate-events-from-get-new-entries-using-web3-py
+# web3 连接
+w3 = get_web3()
 
+# 区块缓存：遇到了相近的问题 https://ethereum.stackexchange.com/questions/87227/duplicate-events-from-get-new-entries-using-web3-py
 block_cache = Cache(maxlen=3)
 
 
@@ -68,8 +69,7 @@ def get_last_block() -> dict:
     if not topic:
         return {}
     logger.debug(f'开始检索 {topic} 里的数据')
-    consumer = kafka_consumer(group_id=f'monitor_block',  # 注意不要加 topic
-                              bootstrap_servers=config.get('kafka', 'bootstrap_servers'))
+    consumer = kafka_consumer(group_id=f'monitor_block')
     partitions = [TopicPartition(topic, p) for p in consumer.partitions_for_topic(topic)]
     last_offset_per_partition = consumer.end_offsets(partitions)
     max_partition, max_offset = sorted(last_offset_per_partition.items(), key=lambda x: x[0])[-1]

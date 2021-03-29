@@ -3,15 +3,17 @@
 @Time    : 2021/3/28 3:44 下午
 @Author  : zhangguanghui
 """
-import logging
 from models import Log
-from common import w3, config
-from utils import kafka_consumer
+from logger import Logger
+from config import config
 from collections import defaultdict
+from utils import kafka_consumer, get_web3
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(filename)s[line:%(lineno)d] : %(message)s')
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+# 设置日志
+logger = Logger(__name__, filename='log.log')
+
+# web3 连接
+w3 = get_web3()
 
 
 def monitor_logs():
@@ -25,8 +27,7 @@ def monitor_logs():
     elif not config.get('kafka', 'log_topic', fallback=None):
         logger.warning('config.ini 中没有 log_topic 参数，退出 monitor_logs 任务')
         return
-    consumer = kafka_consumer(config.get('kafka', 'block_topic'), group_id='monitor_logs',
-                              bootstrap_servers=config.get('kafka', 'bootstrap_servers'))
+    consumer = kafka_consumer(config.get('kafka', 'block_topic'), group_id='monitor_logs')
     for msg in consumer:
         block = msg.value
         logs = w3.eth.filter({'fromBlock': block['number'], 'toBlock': block['number']}).get_all_entries()

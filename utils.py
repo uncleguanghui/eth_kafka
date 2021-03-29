@@ -6,14 +6,15 @@
 import json
 import logging
 import collections
+from web3 import Web3
+from config import config
 from kafka import KafkaProducer, KafkaConsumer
+from web3.middleware import geth_poa_middleware
 from web3.exceptions import BadFunctionCallOutput
 
 logging.getLogger("kafka").setLevel(logging.CRITICAL)  # 隐藏 kafka 日志消息
 
-logging.basicConfig(format='%(asctime)s - %(levelname)s - %(filename)s[line:%(lineno)d] : %(message)s')
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+ASCII_0 = 0
 
 
 # ###################################### 特殊 ######################################
@@ -41,27 +42,52 @@ class Cache:
         return len(self.data)
 
 
+# ###################################### web3 ######################################
+def get_web3():
+    # 初始化 web3，按一定优先级遍历参数
+    w3 = None
+    for key, provider, kwargs in [
+        ('ipc', Web3.IPCProvider, {'timeout': 10}),
+        ('ws', Web3.WebsocketProvider, {'websocket_timeout': 10}),
+        ('http', Web3.HTTPProvider, {}),
+    ]:
+        url = config.get('eth', key, fallback=None)
+        error_info = "尝试下一种连接方式" if key != "http" else "所有尝试都失败"
+        if url:
+            w3 = Web3(provider(url, **kwargs))
+            if w3.isConnected():
+                logging.info(f'以 {key} 方式成功连接 web3')
+                break
+            logging.warning(f'以 {key} 方式连接 web3 失败，{error_info}')
+        else:
+            logging.warning(f'config.ini 中没有 {key} 参数，{error_info}')
+    if not w3 or not w3.isConnected():
+        raise ValueError('请指定正确的 web3 连接方式')
+    w3.middleware_onion.inject(geth_poa_middleware, layer=0)
+
+
 # ###################################### kafka ######################################
 # 初始化 kafka 生产者
-def kafka_producer(bootstrap_servers):
+def kafka_producer():
+    bootstrap_servers = config.get('kafka', 'bootstrap_servers')
     producer = KafkaProducer(
         bootstrap_servers=bootstrap_servers,
         api_version=(0, 10, 2, 0),
         value_serializer=lambda x: json.dumps(x).encode('utf-8')
     )
-    logger.debug(f'kafka 生产者初始化成功: {bootstrap_servers}')
+    logging.debug(f'kafka 生产者初始化成功: {bootstrap_servers}')
     return producer
 
 
-def kafka_consumer(*topics, group_id=None, bootstrap_servers='', auto_offset_reset='latest', **kwargs):
+def kafka_consumer(*topics, group_id=None, auto_offset_reset='latest', **kwargs):
     """
     返回 kafka 消费者
     :param topics:
     :param group_id:
-    :param bootstrap_servers:
     :param auto_offset_reset:
     :return:
     """
+    bootstrap_servers = config.get('kafka', 'bootstrap_servers')
     consumer = KafkaConsumer(
         *topics,
         group_id=group_id,  # 指定此消费者实例属于的组名，可以不指定
@@ -70,8 +96,8 @@ def kafka_consumer(*topics, group_id=None, bootstrap_servers='', auto_offset_res
         value_deserializer=lambda x: json.loads(x.decode('utf-8').encode('utf-8').decode('unicode_escape')),
         **kwargs
     )
-    logger.debug(f'kafka 消费者初始化成功: {bootstrap_servers}, topics: {topics}, group: {group_id}, '
-                 f'auto_offset_reset: {auto_offset_reset}, 其他参数：{kwargs}')
+    logging.debug(f'kafka 消费者初始化成功: {bootstrap_servers}, topics: {topics}, group: {group_id}, '
+                  f'auto_offset_reset: {auto_offset_reset}, 其他参数：{kwargs}')
     return consumer
 
 
@@ -111,9 +137,6 @@ def call_contract_function2(func, ignore_errors, default_value=None):
             logging.error(f'An exception occurred in function {func.fn_name} of contract {func.address}. '
                           f'This exception can be safely ignored.')
         return default_value
-
-
-ASCII_0 = 0
 
 
 def clean_user_provided_content(content):

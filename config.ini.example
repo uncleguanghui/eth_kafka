@@ -19,4 +19,4 @@ bootstrap_servers = xxx.xxx.xxx.xxx:9092
 
 [log]
 # 日志等级，CRITICAL > FATAL > ERROR > WARN >= WARNING > INFO > DEBUG > NOTSET
-log_level = INFO
+level = INFO
